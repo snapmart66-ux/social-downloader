@@ -2,13 +2,11 @@ const TelegramBot = require('node-telegram-bot-api');
 const { exec } = require('child_process');
 const fs = require('fs');
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, {
-  polling: true
-});
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 let userState = {};
 
-// زر البداية
+// /start
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
@@ -17,9 +15,9 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(chatId, "🔥 اختر الموقع:", {
     reply_markup: {
       keyboard: [
-        ["🎵 تيك توك", "📸 انستا"],
-        ["▶️ يوتيوب", "🐦 تويتر"],
-        ["📌 بينترست", "📘 فيسبوك"],
+        ["📺 يوتيوب", "🎵 تيك توك"],
+        ["📸 انستا", "🐦 تويتر"],
+        ["📘 فيسبوك", "📌 بينترست"],
         ["👻 سناب"]
       ],
       resize_keyboard: true
@@ -28,44 +26,49 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // استقبال الرسائل
-bot.on('message', async (msg) => {
+bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (!text) return;
 
   // اختيار الموقع
-  if (text.includes("تيك")  text.includes("انستا")  text.includes("يوتيوب")  text.includes("تويتر")  text.includes("بينترست")  text.includes("فيسبوك")  text.includes("سناب")) {
+  if (
+    text.includes("يوتيوب") ||
+    text.includes("تيك") ||
+    text.includes("انستا") ||
+    text.includes("تويتر") ||
+    text.includes("فيس") ||
+    text.includes("بينترست") ||
+    text.includes("سناب")
+  ) {
+    userState[chatId] = { step: "type", platform: text };
 
-    userState[chatId] = { step: "type" };
-
-    return bot.sendMessage(chatId, "اختر النوع:", {
+    return bot.sendMessage(chatId, "🎯 اختر النوع:", {
       reply_markup: {
-        keyboard: [["🎥 فيديو", "🎧 صوت"]],
+        keyboard: [["🎬 فيديو", "🎧 صوت"]],
         resize_keyboard: true
       }
     });
   }
 
   // اختيار النوع
-  if (text === "🎥 فيديو" || text === "🎧 صوت") {
-
+  if (text === "🎬 فيديو" || text === "🎧 صوت") {
     if (!userState[chatId]) {
-      return bot.sendMessage(chatId, "❗ اكتب /start أولاً");
+      return bot.sendMessage(chatId, "⚠️ اكتب /start");
     }
 
     userState[chatId].type = text;
 
-    return bot.sendMessage(chatId, "📎 دز الرابط");
+    return bot.sendMessage(chatId, "🔗 ارسل الرابط");
   }
 
   // الرابط
   if (text.startsWith("http")) {
-
     const type = userState[chatId]?.type;
 
     if (!type) {
-      return bot.sendMessage(chatId, "❗ اختار الموقع والنوع أولاً /start");
+      return bot.sendMessage(chatId, "⚠️ اكتب /start");
     }
 
     bot.sendMessage(chatId, "⏳ جاري التحميل...");
@@ -75,14 +78,14 @@ bot.on('message', async (msg) => {
     let command;
 
     if (type === "🎧 صوت") {
-      command = yt-dlp -x --audio-format mp3 -o "${file}.mp3" ${text};
+      command = yt-dlp -x --audio-format mp3 -o "${file}.mp3" "${text}";
     } else {
-      command = yt-dlp -o "${file}.mp4" ${text};
+      command = yt-dlp -f best -o "${file}.mp4" "${text}";
     }
 
-    exec(command, async (err) => {
+    exec(command, { maxBuffer: 1024 * 1024 * 50 }, async (err, stdout, stderr) => {
       if (err) {
-        console.log(err);
+        console.log(stderr);
         return bot.sendMessage(chatId, "❌ فشل التحميل");
       }
 
